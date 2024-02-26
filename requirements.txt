@@ -1,2 +1,2 @@
 geopandas
-pyplot
+matplotlib
