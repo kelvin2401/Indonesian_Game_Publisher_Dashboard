@@ -35,7 +35,7 @@ games_count_dev.columns = ['developer', 'number_of_games']
 
 chart1 = alt.Chart(games_count).mark_bar().encode(
     y=alt.Y('category', axis=alt.Axis(labelLimit=200), title='Category'),
-    x='number_of_games',
+    x=alt.X('number_of_games', title='Number of Games'),
     color=alt.Color('category', legend=None),
     tooltip=['category', 'number_of_games']
 ).properties(
@@ -45,7 +45,7 @@ chart1 = alt.Chart(games_count).mark_bar().encode(
 
 chart2 = alt.Chart(games_count_dev).mark_bar().encode(
     y=alt.Y('developer', axis=alt.Axis(labelLimit=200), title='Developer'),
-    x='number_of_games',
+    x=alt.X('number_of_games', title='Number of Games'),
     color=alt.Color('developer', legend=None),
     tooltip=['developer', 'number_of_games']
 ).properties(
