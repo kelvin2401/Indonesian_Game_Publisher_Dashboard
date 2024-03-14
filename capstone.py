@@ -24,7 +24,7 @@ with mx_publishers:
     st.metric("Indonesian and Global Publishers", value=df['publisher'].nunique())
 
     
-st.header("Number of Games by Publisher Category and Developer")
+st.header("Number of Games by Publisher Category, Developer and Publisher")
 
 st.markdown("Information about Indonesian video games from a popular gaming platform, Steam, are collected, mostly by getting a list of Indonesian game developers from the Indonesian Games Association (AGI) website [3]. Publishers are then categorized into whether they are an Indonesian company or not and whether the Indonesian company is a legal entity or not. A legal entity here means that the company is a Limited Liability Company or PT in Indonesian. From 46 Steam games, 17 of them or 37% would be blocked by Kominfo if they are not republished by an Indonesian legal entity in 2024. These are Indonesian games that are developed by Indonesian game developers.")
 
@@ -40,16 +40,34 @@ chart1 = alt.Chart(games_count).mark_bar().encode(
     tooltip=['category', 'number_of_games']
 ).properties(
     title='Number of Games by Publisher Category',
-    height=298
+    height=300
 )
 
-chart2 = alt.Chart(games_count_dev).mark_bar().encode(
-    y=alt.Y('developer', axis=alt.Axis(labelLimit=200), title='Developer'),
-    x=alt.X('number_of_games', title='Number of Games'),
-    color=alt.Color('developer', legend=None),
-    tooltip=['developer', 'number_of_games']
+# chart2 = alt.Chart(games_count_dev).mark_bar().encode(
+#     y=alt.Y('developer', axis=alt.Axis(labelLimit=200), title='Developer'),
+#     x=alt.X('number_of_games', title='Number of Games'),
+#     color=alt.Color('developer', legend=None),
+#     tooltip=['developer', 'number_of_games']
+# ).properties(
+#     title='Number of Games by Developer'
+# )
+
+# Group by developer and category, count the number of titles in each category
+grouped = df.groupby(['developer', 'category']).size().unstack(fill_value=0).reset_index()
+
+# Melt the dataframe to reshape it for Altair
+melted = pd.melt(grouped, id_vars='developer', var_name='category', value_name='count')
+
+# Create Altair chart
+chart2 = alt.Chart(melted).mark_bar().encode(
+    y=alt.Y('developer', title='Category'),
+    x=alt.X('sum(count)', title='Number of Games'),
+    color='category',
+    order=alt.Order('category', sort='ascending'),
+    tooltip=['developer', 'category', 'sum(count)']
 ).properties(
-    title='Number of Games by Developer'
+    height=300,
+    title='Number of Titles by Developer and Category'
 )
 
 combined_chart = (chart1 | chart2).configure_axis(
@@ -62,20 +80,66 @@ combined_chart = (chart1 | chart2).configure_axis(
 
 st.altair_chart(combined_chart, use_container_width=True)
 
+# Group by developer and category, count the number of titles in each category
+grouped = df.groupby(['publisher', 'category']).size().unstack(fill_value=0).reset_index()
+
+# Melt the dataframe to reshape it for Altair
+melted = pd.melt(grouped, id_vars='publisher', var_name='category', value_name='count')
+
+chart3 = alt.Chart(melted).mark_bar().encode(
+    y=alt.Y('publisher', axis=alt.Axis(labelLimit=200), title='Publisher'),
+    x=alt.X('sum(count)', title='Number of Games'),
+    color=alt.Color('category', legend=alt.Legend(labelLimit=500), title='Category'),
+    order=alt.Order('category', sort='ascending'),
+    tooltip=['publisher', 'category', 'sum(count)']
+).properties(
+    height=700,
+    width=1200,
+    title='Number of Titles by Publisher and Category'
+)
+
+st.altair_chart(chart3, use_container_width=False)
+
+df_sorted = df.sort_values(by='num_reviews', ascending=False)
+
+# Select the top 20 games
+top_20_games = df_sorted.head(20)
+
+# Create Altair chart
+chart4 = alt.Chart(top_20_games).mark_bar().encode(
+    x=alt.X('num_reviews:Q', title='Number of Reviews'),
+    y=alt.Y('title:N', sort='-x', axis=alt.Axis(labelLimit=500), title='Title'),
+    color=alt.Color('category', legend=None),
+    tooltip=['title', 'num_reviews']
+).properties(
+    height=700,
+    width=1200,
+    title='Top 20 Games by Number of Reviews'
+)
+
+st.altair_chart(chart4, use_container_width=False)
+
 option = st.selectbox(
     'Filter by:',
-    ('Developer', 'Publisher')
+    ('Title', 'Developer', 'Publisher', 'Category')
 )
 
 filter_text = st.text_input(f'Enter {option} name:')
+df['pct_pos_reviews'] = round((df['num_positive_reviews'] / df['num_reviews']) * 100, 2)
 
-df2 = df[['title','developer','publisher']]
-df2.rename(columns = {'title':'Title', 'developer':'Developer', 'publisher':'Publisher'}, inplace = True)
+df2 = df[['title','developer','publisher','category', 'all_time_peak','num_reviews','pct_pos_reviews']]
+df2.rename(columns = {'title':'Title', 'developer':'Developer', 'publisher':'Publisher', 'category':'Category', 
+                      'all_time_peak':'All Time Peak Players (24 Hours)', 'num_reviews':'Number of Reviews',
+                      'pct_pos_reviews':'Positive Reviews %'}, inplace = True)
 
 if option == 'Developer':
     filtered_df = df2[df2['Developer'].str.contains(filter_text, case=False)]
 elif option == 'Publisher':
     filtered_df = df2[df2['Publisher'].str.contains(filter_text, case=False)]
+elif option == 'Title':
+    filtered_df = df2[df2['Title'].str.contains(filter_text, case=False)]
+elif option == 'Category':
+    filtered_df = df2[df2['Category'].str.contains(filter_text, case=False)]
 
 st.dataframe(filtered_df, use_container_width=True, column_config={"_index": None})
 
